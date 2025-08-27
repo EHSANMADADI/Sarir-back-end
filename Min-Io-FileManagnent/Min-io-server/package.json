@@ -1,0 +1,13 @@
+{
+  "name": "min-io-server",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start":"minio server C:/Users/qaz/Desktop/bakend-sarir/Min-Io-FileManagnent/Min-io-server/data",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}
