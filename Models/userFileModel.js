@@ -60,6 +60,11 @@ const userFileSchema = new mongoose.Schema({
         require: false,
         default: null
     },
+    responseImgDb: {
+        type: mongoose.Schema.Types.Mixed,
+        require: false,
+        default: null
+    },
     status: {
         type: Boolean,
         default: false
@@ -70,8 +75,14 @@ const userFileSchema = new mongoose.Schema({
     responseTime: {
         type: Number,
         default: 0
-    }
+    },
+ kwsResponse: { type: mongoose.Schema.Types.Mixed, default: null },
 
+    // 🔹  kws فایل‌های پشتیبان ارسال‌شده همراه این درخواست
+    supportFiles: {
+        type: [String], // لیستی از objectName ها
+        default: []
+    },
 
 
 });

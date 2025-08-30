@@ -14,6 +14,7 @@ import { fileURLToPath } from 'url';
 import superResolationRoute from './Routes/superResolationRoute.js'
 import TranslateRoute from './Routes/TranslateRoute.js'
 import imageDbRoute from './Routes/imageDbRoute.js'
+import kwsRoute from './Routes/kwsRoute.js'
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -34,5 +35,6 @@ app.use('/api',LimitRoute)
 app.use('/superResolation',superResolationRoute)
 app.use('/translate',TranslateRoute)
 app.use('/ImageDb',imageDbRoute)
+app.use('/KWS',kwsRoute)
 
 export default app;

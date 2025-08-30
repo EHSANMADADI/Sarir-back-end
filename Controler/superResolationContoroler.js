@@ -1,8 +1,7 @@
 import axios from "axios";
-import { minioClient,uploadToMinio } from "../Min-Io-FileManagnent/Min-io-api/utils/uploadToMinio.js";
+import { minioClient, uploadToMinio } from "../Min-Io-FileManagnent/Min-io-api/utils/uploadToMinio.js";
 import UserFileModel from "../Models/userFileModel.js";
 import FormData from "form-data";
-import https from "https";
 
 export async function superResolationContoroler(req, res) {
   let userId = null;
@@ -10,7 +9,7 @@ export async function superResolationContoroler(req, res) {
   const bucketName = "sarirbucket";
 
   try {
-    const { objectName, accessToken, category = 'SuperResolation' } = req.body;
+    const { objectName, accessToken, category = "SuperResolation" } = req.body;
 
     if (!objectName || !accessToken) {
       return res
@@ -22,12 +21,11 @@ export async function superResolationContoroler(req, res) {
     const response = await axios.get(
       "http://185.83.112.4:3300/api/UserQuery/GetCurrentUser",
       {
-        httpsAgent: agent,
         headers: { accept: "application/json", Authorization: accessToken },
       }
     );
 
-    userId = response.data.returnValue.id;
+    userId = response.data.returnValue?.id;
     if (!userId) {
       return res
         .status(401)
@@ -42,7 +40,7 @@ export async function superResolationContoroler(req, res) {
     });
 
     // --- چک حجم کل استفاده شده (2GB limit)
-    const MAX_SIZE = 2 * 1024 * 1024 * 1024; // 2GB
+    const MAX_SIZE = 2 * 1024 * 1024 * 1024;
     const totalSize = await UserFileModel.aggregate([
       { $match: { userId: userId, type: "super-resolution" } },
       { $group: { _id: null, total: { $sum: "$size" } } },
@@ -74,6 +72,8 @@ export async function superResolationContoroler(req, res) {
         maxBodyLength: Infinity,
       }
     );
+    console.log(responseSuper.data);
+    
 
     const { output_images, zip_file } = responseSuper.data;
     const responseTime = Date.now() - startTime;
@@ -81,24 +81,21 @@ export async function superResolationContoroler(req, res) {
     // --- دانلود فایل‌ها و آپلود به MinIO
     const savedFiles = [];
     const downloadAndUpload = async (fileUrl, fileType) => {
-        const fileName = `${Date.now()}-${fileUrl.split("/").pop()}`;
-        const fullUrl = `${SUPER_RESOLATION_URL}/${fileUrl}`;
-      
-        const resp = await axios.get(fullUrl, { responseType: "arraybuffer" });
-      
-        // حالا resp.data یک Buffer است
-        const fileData = {
-          buffer: Buffer.from(resp.data),
-          filename: fileName,
-          mimetype: fileType === "image" ? "image/png" : "application/zip",
-          userId,
-        };
-      
-        const result = await uploadToMinio(fileData, category);
-      
-        savedFiles.push({ type: fileType, minioObjectName: result.objectName });
-        return result.objectName;
+      const fileName = `${Date.now()}-${fileUrl.split("/").pop()}`;
+      const fullUrl = `${SUPER_RESOLATION_URL}/${fileUrl}`;
+      const resp = await axios.get(fullUrl, { responseType: "arraybuffer" });
+
+      const fileData = {
+        buffer: Buffer.from(resp.data),
+        filename: fileName,
+        mimetype: fileType === "image" ? "image/png" : "application/zip",
+        userId,
       };
+
+      const result = await uploadToMinio(fileData, category);
+      savedFiles.push({ type: fileType, minioObjectName: result.objectName });
+      return result.objectName;
+    };
 
     const uploadedImages = [];
     for (const img of output_images) {
@@ -128,7 +125,7 @@ export async function superResolationContoroler(req, res) {
       responseSuper: {
         output_images: uploadedImages,
         zip_file: zipFileName,
-      }, // مسیرهای ذخیره‌شده در MinIO
+      },
       status: true,
       responseTime,
     });
@@ -143,35 +140,38 @@ export async function superResolationContoroler(req, res) {
     const responseTime = Date.now() - startTime;
     console.error("خطا در Super Resolution:", error);
 
-    // --- اگر قبلاً رکورد fail نبود، بساز
-    const existingFailed = await UserFileModel.findOne({
-      userId,
-      originalFilename: req.body.objectName,
-      status: false,
-    });
-
-    if (!existingFailed) {
-      await new UserFileModel({
-        userId: userId ,
-        originalFilename: req.body.objectName || "",
-        minioObjectName: req.body.objectName || "",
-        MinIofileId: "",
-        size: 0,
-        type: "super-resolution",
-        inputIdFile: req.body.objectName || "",
-        textAsr: null,
-        wordASR: null,
-        responseOcr: null,
-        responseSuper: null,
-        status: false,
-        responseTime,
-      }).save();
-    }
-
-    if (error.status === 401) {
+    // اگر ارور مربوط به دسترسی کاربر باشه → 401
+    if (error?.response?.status === 401 || error.message?.includes("401")) {
       return res
         .status(401)
         .json({ error: "User not found or invalid access token" });
+    }
+
+    // --- فقط اگر userId وجود داشت رکورد fail ذخیره شود
+    if (userId) {
+      const existingFailed = await UserFileModel.findOne({
+        userId,
+        originalFilename: req.body.objectName,
+        status: false,
+      });
+
+      if (!existingFailed) {
+        await new UserFileModel({
+          userId,
+          originalFilename: req.body.objectName || "",
+          minioObjectName: req.body.objectName || "",
+          MinIofileId: "",
+          size: 0,
+          type: "super-resolution",
+          inputIdFile: req.body.objectName || "",
+          textAsr: null,
+          wordASR: null,
+          responseOcr: null,
+          responseSuper: null,
+          status: false,
+          responseTime,
+        }).save();
+      }
     }
 
     return res
