@@ -19,9 +19,8 @@ export async function superResolationContoroler(req, res) {
     }
 
     // --- اعتبارسنجی کاربر
-    const agent = new https.Agent({ rejectUnauthorized: false });
     const response = await axios.get(
-      "https://185.83.112.4:3300/api/UserQuery/GetCurrentUser",
+      "http://185.83.112.4:3300/api/UserQuery/GetCurrentUser",
       {
         httpsAgent: agent,
         headers: { accept: "application/json", Authorization: accessToken },

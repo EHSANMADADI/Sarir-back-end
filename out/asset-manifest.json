@@ -1,7 +1,7 @@
 {
   "files": {
     "main.css": "/static/css/main.911315b3.css",
-    "main.js": "/static/js/main.035aa8b7.js",
+    "main.js": "/static/js/main.e5c34f44.js",
     "static/js/453.ed3810f9.chunk.js": "/static/js/453.ed3810f9.chunk.js",
     "static/media/IranNastaliq.ttf": "/static/media/IranNastaliq.244ccc29fc6f22b136fa.ttf",
     "static/media/IranNastaliq.otf": "/static/media/IranNastaliq.43dc05235cd78330ac7c.otf",
@@ -30,14 +30,14 @@
     "static/media/logo.png": "/static/media/logo.1d91d8094938b2e09b12.png",
     "static/media/Yekan.woff": "/static/media/Yekan.18af8c75ab1951a5e56d.woff",
     "static/media/Yekan.woff2": "/static/media/Yekan.a62bb3c8f209f478a9e5.woff2",
-    "static/media/tail-spin.svg": "/static/media/tail-spin.e3e2f3d4feb1011c5bbcf825614546c8.svg",
+    "static/media/tail-spin.svg": "/static/media/tail-spin.86194a552d45044eea10396f20518cab.svg",
     "index.html": "/index.html",
     "main.911315b3.css.map": "/static/css/main.911315b3.css.map",
-    "main.035aa8b7.js.map": "/static/js/main.035aa8b7.js.map",
+    "main.e5c34f44.js.map": "/static/js/main.e5c34f44.js.map",
     "453.ed3810f9.chunk.js.map": "/static/js/453.ed3810f9.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.911315b3.css",
-    "static/js/main.035aa8b7.js"
+    "static/js/main.e5c34f44.js"
   ]
 }

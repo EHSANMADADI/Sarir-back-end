@@ -8,11 +8,8 @@ export async function reciveFile(req, res) {
     try {
         const { accessToken } = req.params;
         var userId
-        const agent = new https.Agent({
-          rejectUnauthorized: false,
-        });
-        const response = await axios.get('https://185.83.112.4:3300/api/UserQuery/GetCurrentUser', {
-          httpsAgent: agent,
+      
+        const response = await axios.get('http://185.83.112.4:3300/api/UserQuery/GetCurrentUser', {
           headers: {
             'accept': 'application/json',
             'Authorization': accessToken

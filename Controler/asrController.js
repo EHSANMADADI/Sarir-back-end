@@ -20,11 +20,9 @@ export async function asrController(req, res) {
     }
 
     // احراز هویت کاربر
-    const agent = new https.Agent({ rejectUnauthorized: false });
     const responsee = await axios.get(
-      "https://185.83.112.4:3300/api/UserQuery/GetCurrentUser",
+      "http://185.83.112.4:3300/api/UserQuery/GetCurrentUser",
       {
-        httpsAgent: agent,
         headers: {
           accept: "application/json",
           Authorization: accessToken,
