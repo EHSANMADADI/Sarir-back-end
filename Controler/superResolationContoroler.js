@@ -133,7 +133,7 @@ export async function superResolationContoroler(req, res) {
 
     return res.status(200).json({
       message: "Super-resolution completed successfully",
-      response: newFile.responseSuper,
+     response: responseSuper.data,
       mongoRecordedId: newFile._id,
     });
   } catch (error) {

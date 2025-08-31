@@ -11,7 +11,7 @@ export async function ocrController(req, res) {
   const startTime = Date.now();
 
   try {
-    let { objectName, accessToken } = req.body;
+    let { objectName, accessToken, translate, source_lang = 'fa', target_lang } = req.body;
 
     if (!objectName || !accessToken) {
       return res
@@ -67,11 +67,17 @@ export async function ocrController(req, res) {
       for (const obj of objectName) {
         const fileStream = await minioClient.getObject("sarirbucket", obj);
         form.append("files", fileStream, obj);
+        form.append('target_lang', target_lang);
+        form.append('source_lang', source_lang);
+        form.append('translate', translate)
       }
     } else {
       const singleObject = objectName[0];
       const fileStream = await minioClient.getObject("sarirbucket", singleObject);
       form.append("file", fileStream, singleObject);
+      form.append('target_lang', target_lang);
+      form.append('source_lang', source_lang);
+      form.append('translate', translate)
 
       const isPdf = singleObject.toLowerCase().endsWith(".pdf");
       targetUrl = isPdf
