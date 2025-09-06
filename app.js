@@ -34,7 +34,7 @@ app.use('/speech', speechRoute)
 app.use('/ASR', asrRoute)
 app.use('/ocr',ocrRoute)
 app.use('/api',LimitRoute)
-app.use('/superResolation',superResolationRoute)s
+app.use('/superResolation',superResolationRoute)
 app.use('/translate',TranslateRoute)
 app.use('/ImageDb',imageDbRoute)
 app.use('/KWS',kwsRoute)
