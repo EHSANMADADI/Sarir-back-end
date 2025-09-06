@@ -2,7 +2,6 @@ import axios from "axios";
 import { minioClient } from "../Min-Io-FileManagnent/Min-io-api/utils/uploadToMinio.js";
 import UserFileModel from "../Models/userFileModel.js";
 import readline from "readline";
-import https from "https";
 import { PassThrough } from "stream";
 import FormData from "form-data";
 
@@ -14,9 +13,7 @@ export async function ocrController(req, res) {
     let { objectName, accessToken, translate, source_lang = 'fa', target_lang } = req.body;
 
     if (!objectName || !accessToken) {
-      return res
-        .status(400)
-        .json({ error: "objectName و accessToken الزامی هستند." });
+      return res.status(400).json({ error: "objectName و accessToken الزامی هستند." });
     }
 
     if (!Array.isArray(objectName)) objectName = [objectName];
@@ -24,16 +21,10 @@ export async function ocrController(req, res) {
     // --- اعتبارسنجی کاربر ---
     const response = await axios.get(
       "http://185.83.112.4:3300/api/UserQuery/GetCurrentUser",
-      {
-        headers: { accept: "application/json", Authorization: accessToken },
-      }
+      { headers: { accept: "application/json", Authorization: accessToken } }
     );
-
     userId = response.data.returnValue.id;
-    if (!userId)
-      return res
-        .status(401)
-        .json({ error: "User not found or invalid access token" });
+    if (!userId) return res.status(401).json({ error: "User not found or invalid access token" });
 
     // --- بررسی رکورد fail قبلی ---
     const failedRecord = await UserFileModel.findOne({
@@ -51,9 +42,7 @@ export async function ocrController(req, res) {
     const usedSize = totalSize.length > 0 ? totalSize[0].total : 0;
     if (usedSize >= MAX_SIZE) {
       return res.status(402).json({
-        error: `شما به سقف حجم مجاز (${(MAX_SIZE / 1024 ** 3).toFixed(
-          2
-        )} GB) رسیده‌اید`,
+        error: `شما به سقف حجم مجاز (${(MAX_SIZE / 1024 ** 3).toFixed(2)} GB) رسیده‌اید`,
       });
     }
 
@@ -67,23 +56,22 @@ export async function ocrController(req, res) {
       for (const obj of objectName) {
         const fileStream = await minioClient.getObject("sarirbucket", obj);
         form.append("files", fileStream, obj);
-        form.append('target_lang', target_lang);
-        form.append('source_lang', source_lang);
-        form.append('translate', translate)
       }
     } else {
       const singleObject = objectName[0];
       const fileStream = await minioClient.getObject("sarirbucket", singleObject);
       form.append("file", fileStream, singleObject);
-      form.append('target_lang', target_lang);
-      form.append('source_lang', source_lang);
-      form.append('translate', translate)
 
       const isPdf = singleObject.toLowerCase().endsWith(".pdf");
       targetUrl = isPdf
         ? `${OCR_URL}/api/pdf-to-pdf/stream`
         : `${OCR_URL}/api/image-to-pdf/stream`;
     }
+
+    // --- اضافه کردن پارامترهای ترجمه به صورت string ---
+    if (translate !== undefined) form.append("translate", String(translate));
+    if (source_lang !== undefined) form.append("source_lang", String(source_lang));
+    if (target_lang !== undefined) form.append("target_lang", String(target_lang));
 
     // --- ارسال به OCR ---
     const ocrRes = await axios.post(targetUrl, form, {
@@ -97,11 +85,10 @@ export async function ocrController(req, res) {
     const passStream = new PassThrough();
     ocrRes.data.pipe(passStream);
 
-    // مسیر اول: استریم مستقیم به کاربر
     res.setHeader("Content-Type", "application/json");
     passStream.pipe(res);
 
-    // مسیر دوم: خواندن برای ذخیره در MinIO
+    // --- خواندن برای ذخیره در MinIO ---
     const rl = readline.createInterface({ input: ocrRes.data });
     const ocrResponseList = [];
 
@@ -116,20 +103,17 @@ export async function ocrController(req, res) {
     rl.on("close", async () => {
       const responseTime = Date.now() - startTime;
 
-      // حذف fail قبلی
       if (failedRecord) await UserFileModel.deleteOne({ _id: failedRecord._id });
 
-      // ذخیره JSON در MinIO
       const jsonBuffer = Buffer.from(JSON.stringify(ocrResponseList));
       const ocrJsonPath = `ocrResults/${objectName.join("_")}_${Date.now()}.json`;
       await minioClient.putObject("sarirbucket", ocrJsonPath, jsonBuffer);
 
-      // ذخیره رکورد در MongoDB با مسیر فایل
       const ocrResult = new UserFileModel({
         userId,
         originalFilename: objectName.join(", "),
         minioObjectName: objectName.join(", "),
-        ocrJsonPath,   // مسیر فایل ذخیره شده در MinIO
+        ocrJsonPath,
         size: 0,
         type: "ocr",
         inputIdFile: objectName.join(", "),

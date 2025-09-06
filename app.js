@@ -15,6 +15,7 @@ import superResolationRoute from './Routes/superResolationRoute.js'
 import TranslateRoute from './Routes/TranslateRoute.js'
 import imageDbRoute from './Routes/imageDbRoute.js'
 import kwsRoute from './Routes/kwsRoute.js'
+import graphRoute from './Routes/graphRoute.js'
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -22,6 +23,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 app.use('/public', express.static(path.join(__dirname, 'public')));
 app.use(express.static(path.join(__dirname, 'out')));
+app.use("/graphe", express.static(path.join(__dirname, "build-graph")));
 
 app.use('/api/ath', athRouter);
 app.use('/uploadUrginalFile', UploadOrginalFileRoute)
@@ -32,9 +34,10 @@ app.use('/speech', speechRoute)
 app.use('/ASR', asrRoute)
 app.use('/ocr',ocrRoute)
 app.use('/api',LimitRoute)
-app.use('/superResolation',superResolationRoute)
+app.use('/superResolation',superResolationRoute)s
 app.use('/translate',TranslateRoute)
 app.use('/ImageDb',imageDbRoute)
 app.use('/KWS',kwsRoute)
+app.use('/graph',graphRoute)
 
 export default app;

@@ -1,0 +1,25 @@
+{
+  "files": {
+    "main.css": "/graphe/static/css/main.a95a7fa8.css",
+    "main.js": "/graphe/static/js/main.07edf7d6.js",
+    "static/js/453.de9459bd.chunk.js": "/graphe/static/js/453.de9459bd.chunk.js",
+    "static/media/IranNastaliq.ttf": "/graphe/static/media/IranNastaliq.244ccc29fc6f22b136fa.ttf",
+    "static/media/IranNastaliq.otf": "/graphe/static/media/IranNastaliq.43dc05235cd78330ac7c.otf",
+    "static/media/IranNastaliq.eot": "/graphe/static/media/IranNastaliq.a0752943243f958128e5.eot",
+    "static/media/IranNastaliq.woff": "/graphe/static/media/IranNastaliq.983951041160e8e42fbf.woff",
+    "static/media/IranNastaliq.woff2": "/graphe/static/media/IranNastaliq.8a2ecb0e1cc52ec83d01.woff2",
+    "static/media/Yekan.ttf": "/graphe/static/media/Yekan.f6a0838b6690eaaa2898.ttf",
+    "static/media/Yekan.eot": "/graphe/static/media/Yekan.9db58f99bcd38a0e67b6.eot",
+    "static/media/logo (1).png": "/graphe/static/media/logo (1).1d91d8094938b2e09b12.png",
+    "static/media/Yekan.woff": "/graphe/static/media/Yekan.18af8c75ab1951a5e56d.woff",
+    "static/media/Yekan.woff2": "/graphe/static/media/Yekan.a62bb3c8f209f478a9e5.woff2",
+    "index.html": "/graphe/index.html",
+    "main.a95a7fa8.css.map": "/graphe/static/css/main.a95a7fa8.css.map",
+    "main.07edf7d6.js.map": "/graphe/static/js/main.07edf7d6.js.map",
+    "453.de9459bd.chunk.js.map": "/graphe/static/js/453.de9459bd.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.a95a7fa8.css",
+    "static/js/main.07edf7d6.js"
+  ]
+}

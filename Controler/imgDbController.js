@@ -6,6 +6,7 @@ import FormData from "form-data";
 export async function imgDbController(req, res) {
     const startTime = Date.now();
     const { objectName, accessToken } = req.body;
+    var userId=null;
 
     if (!objectName || !accessToken) {
         return res
@@ -25,7 +26,7 @@ export async function imgDbController(req, res) {
             }
         );
 
-        const userId = userResponse.data.returnValue?.id;
+         userId = userResponse.data.returnValue?.id;
         if (!userId) {
             return res
                 .status(401)
@@ -53,7 +54,7 @@ export async function imgDbController(req, res) {
                 maxBodyLength: Infinity,
             }
         );
-        console.log(apiResponse.data.JSON);
+        console.log(apiResponse.data);
 
 
         // 4️⃣ ذخیره نتیجه در MongoDB

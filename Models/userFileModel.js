@@ -65,6 +65,11 @@ const userFileSchema = new mongoose.Schema({
         require: false,
         default: null
     },
+    responsegroph:{
+         type: mongoose.Schema.Types.Mixed,
+        require: false,
+        default: null
+    },
     status: {
         type: Boolean,
         default: false
