@@ -1,7 +1,7 @@
 {
   "files": {
-    "main.css": "/graphe/static/css/main.a95a7fa8.css",
-    "main.js": "/graphe/static/js/main.07edf7d6.js",
+    "main.css": "/graphe/static/css/main.89d856db.css",
+    "main.js": "/graphe/static/js/main.60d80d7e.js",
     "static/js/453.de9459bd.chunk.js": "/graphe/static/js/453.de9459bd.chunk.js",
     "static/media/IranNastaliq.ttf": "/graphe/static/media/IranNastaliq.244ccc29fc6f22b136fa.ttf",
     "static/media/IranNastaliq.otf": "/graphe/static/media/IranNastaliq.43dc05235cd78330ac7c.otf",
@@ -14,12 +14,12 @@
     "static/media/Yekan.woff": "/graphe/static/media/Yekan.18af8c75ab1951a5e56d.woff",
     "static/media/Yekan.woff2": "/graphe/static/media/Yekan.a62bb3c8f209f478a9e5.woff2",
     "index.html": "/graphe/index.html",
-    "main.a95a7fa8.css.map": "/graphe/static/css/main.a95a7fa8.css.map",
-    "main.07edf7d6.js.map": "/graphe/static/js/main.07edf7d6.js.map",
+    "main.89d856db.css.map": "/graphe/static/css/main.89d856db.css.map",
+    "main.60d80d7e.js.map": "/graphe/static/js/main.60d80d7e.js.map",
     "453.de9459bd.chunk.js.map": "/graphe/static/js/453.de9459bd.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.a95a7fa8.css",
-    "static/js/main.07edf7d6.js"
+    "static/css/main.89d856db.css",
+    "static/js/main.60d80d7e.js"
   ]
 }

@@ -1,99 +1,88 @@
-
 import UserFileModel from '../Models/userFileModel.js';
-import { uploadToMinio } from '../Min-Io-FileManagnent/Min-io-api/utils/uploadToMinio.js'
+import { v4 as uuidv4 } from 'uuid';
+import { minioClient } from '../Min-Io-FileManagnent/Min-io-api/utils/MinioClient.js';
 import axios from 'axios';
-import https from 'https';
 
 export async function UploadOrginalFile(req, res) {
   try {
-    const startTime = Date.now(); // ذخیره زمان شروع
+    const startTime = Date.now();
     const { accessToken, category = "original" } = req.body;
     const file = req.file;
-
 
     if (!file || !accessToken) {
       return res.status(400).json({ error: 'File and accessToken are required' });
     }
-    var userId
 
-    const response = await axios.get('http://185.83.112.4:3300/api/UserQuery/GetCurrentUser', {
+    // دریافت اطلاعات کاربر
+    const response = await axios.get('http://localhost:3300/api/UserQuery/GetCurrentUser', {
       headers: {
         'accept': 'application/json',
         'Authorization': accessToken
       }
     });
 
-    userId = response.data.returnValue.id;
-
+    const userId = response.data.returnValue?.id;
     if (!userId) {
       return res.status(401).json({ error: 'User not found or invalid access token' });
     }
 
-    
-        // حداکثر حجم مجاز برای هر کاربر (اینجا ۲ گیگابایت)
-        const MAX_SIZE = 2 * 1024 * 1024 * 1024; // 2GB
+    // محدودیت حجم کل برای هر کاربر (۲ گیگ)
+    const MAX_SIZE = 2 * 1024 * 1024 * 1024; // 2GB
 
-        // مجموع حجم فایل‌های کاربر برای یک type خاص (مثلا ASR) را محاسبه کن
-        const totalSize = await UserFileModel.aggregate([
-            { $match: { userId: userId, type: 'original' } },
-            { $group: { _id: null, total: { $sum: "$size" } } }
-        ]);
+    const totalSize = await UserFileModel.aggregate([
+      { $match: { userId: userId, type: 'original' } },
+      { $group: { _id: null, total: { $sum: "$size" } } }
+    ]);
+    const usedSize = totalSize.length > 0 ? totalSize[0].total : 0;
 
-        // اگر قبلاً رکوردی داشته، حجم را از آرایه بگیر
-        const usedSize = totalSize.length > 0 ? totalSize[0].total : 0;
+    if (usedSize + file.size > MAX_SIZE) {
+      return res.status(402).json({
+        error: `شما به سقف حجم مجاز (${(MAX_SIZE / (1024 ** 3)).toFixed(2)} GB) رسیده‌اید`
+      });
+    }
 
-        // اگر حجم فعلی کاربر به اضافه فایل جدید بیشتر از حد مجاز باشد
-        if (usedSize >= MAX_SIZE) {
-            return res.status(402).json({
-                error: `شما به سقف حجم مجاز (${(MAX_SIZE / (1024 ** 3)).toFixed(2)} GB) رسیده‌اید`
-            });
-        }
+    // ✅ ساختن نام امن برای ذخیره در MinIO
+    const fileExt = file.originalname.split('.').pop();
+    const safeFileName = `${uuidv4()}.${fileExt}`;
 
+    // ✅ ذخیره فایل در MinIO
+    const bucketName = "sarirbucket";
+    await minioClient.putObject(bucketName, safeFileName, file.buffer, {
+      'Content-Type': file.mimetype,
+    });
 
-    // 1. ذخیره فایل در MinIO
-    const minioResult = await uploadToMinio({
-      buffer: file.buffer,
-      filename: file.originalname,
-      mimetype: file.mimetype,
-      userId,
-    }, category);
-    console.log('MinIo save', minioResult)
+    // ✅ ذخیره اطلاعات در MongoDB
+    const originalNameUtf8 = Buffer.from(req.file.originalname, 'latin1').toString('utf8');
 
-    // 2. ذخیره اطلاعات در MongoDB
     const responseTime = Date.now() - startTime;
-
     const savedRecord = await UserFileModel.create({
       userId,
-      originalFilename: file.originalname,
-      minioObjectName: minioResult.objectName,
-      MinIofileId: minioResult.fileId,  // Id file in Minio 
-      size: minioResult.size,
-      mimetype: minioResult.mimetype,
+      originalFilename: originalNameUtf8,   // اسم اصلی (فارسی)
+      minioObjectName: safeFileName,        // اسم امن برای MinIO
+      MinIofileId: uuidv4(),                // یک ID یکتا برای فایل (می‌تونی نگه داری)
+      size: file.size,
+      mimetype: file.mimetype,
       type: 'original',
       inputIdFile: null,
       textAsr: null,
       status: true,
-      responseTime:responseTime
+      responseTime
     });
-    console.log("seve in mongo");
-
 
     return res.status(201).json({
       message: 'File uploaded and saved to MongoDB successfully',
-      MinIofileId: minioResult.fileId,
       mongoRecordId: savedRecord._id,
-      minioObjectName: savedRecord.minioObjectName
+      minioObjectName: savedRecord.minioObjectName,
+      originalFilename: savedRecord.originalFilename,
     });
+
   } catch (err) {
     console.error('Server error:', err);
-    console.log(err);
-    if (err.status == 401) {
-      return res.status(401).json({ error: 'User not found or invalid access token' });
 
+    if (err?.response?.status === 401) {
+      return res.status(401).json({ error: 'User not found or invalid access token' });
     }
 
     return res.status(500).json({ error: 'Server error' });
   }
-
-
 }

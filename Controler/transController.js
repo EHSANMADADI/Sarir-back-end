@@ -19,7 +19,7 @@ export async function transController(req, res) {
 
         // --- اعتبارسنجی کاربر ---
         const response = await axios.get(
-            'http://185.83.112.4:3300/api/UserQuery/GetCurrentUser',
+            'http://localhost:3300/api/UserQuery/GetCurrentUser',
             {
                 headers: {
                     accept: 'application/json',

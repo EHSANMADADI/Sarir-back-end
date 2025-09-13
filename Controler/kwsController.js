@@ -1,7 +1,8 @@
 import axios from 'axios';
 import https from 'https';
-import { minioClient } from '../Min-Io-FileManagnent/Min-io-api/utils/uploadToMinio.js';
+import { minioClient, uploadToMinio } from '../Min-Io-FileManagnent/Min-io-api/utils/uploadToMinio.js';
 import UserFileModel from '../Models/userFileModel.js';
+import { v4 as uuidv4 } from 'uuid';
 import FormData from 'form-data';
 import mime from 'mime-types';
 import dotenv from "dotenv";
@@ -10,12 +11,13 @@ dotenv.config();
 
 export async function kwsController(req, res) {
     const startTime = Date.now();
+    let userId = null;
 
     try {
         const { 
-            objectName,        // فایل اصلی
-            supportFiles = [], // آرایه‌ای از objectName فایل‌های پشتیبان
-            supportName,       // کلمه جستجو
+            objectName,
+            supportFiles = [],
+            supportName,
             accessToken,
             lang = 'fa',
             category = 'kwsFile'
@@ -30,38 +32,57 @@ export async function kwsController(req, res) {
 
         // --- اعتبارسنجی کاربر ---
         const response = await axios.get(
-            'http://185.83.112.4:3300/api/UserQuery/GetCurrentUser',
+            'http://localhost:3300/api/UserQuery/GetCurrentUser',
             { headers: { accept: 'application/json', Authorization: accessToken } }
         );
 
-        const userId = response.data.returnValue.id;
-        if (!userId) {
-            return res.status(401).json({ error: 'User not found or invalid access token' });
-        }
+        userId = response.data.returnValue?.id;
+        if (!userId) return res.status(401).json({ error: 'User not found or invalid access token' });
+
+        // --- پیدا کردن رکورد اصلی برای حفظ اسم فارسی ---
+        const originalFileRecord = await UserFileModel.findOne({
+            userId,
+            minioObjectName: objectName,
+            type: "original",
+        });
+        if (!originalFileRecord) return res.status(404).json({ error: "Original file record not found" });
+
+        const mainOriginalFilename = originalFileRecord.originalFilename;
+
+        // --- بررسی رکورد ناموفق قبلی ---
+        const failedRecord = await UserFileModel.findOne({
+            userId,
+            originalFilename: mainOriginalFilename,
+            status: false,
+            type: category
+        });
 
         // ---- ساخت FormData برای ارسال به سرویس KWS ----
         const form = new FormData();
         form.append("support_name", supportName);
         form.append("lang", lang);
 
-        // --- فایل اصلی ---
+        // --- فایل اصلی با اسم امن ---
         const mainFileStream = await minioClient.getObject(bucketName, objectName);
-        const mainFileDoc = await UserFileModel.findOne({ minioObjectName: objectName });
-        const mainOriginalFilename = mainFileDoc?.originalFilename || objectName;
-
+        const safeMainFilename = `${mainOriginalFilename}`;
         form.append("files", mainFileStream, {
-            filename: mainOriginalFilename,
+            filename: safeMainFilename,
             contentType: mime.lookup(mainOriginalFilename) || 'application/octet-stream'
         });
 
-        // --- فایل‌های پشتیبان ---
+        // --- فایل‌های پشتیبان با اسم امن ---
         for (const fileName of supportFiles) {
-            const supportFileStream = await minioClient.getObject(bucketName, fileName);
-            const supportFileDoc = await UserFileModel.findOne({ minioObjectName: fileName });
+            const supportFileDoc = await UserFileModel.findOne({
+                userId,
+                minioObjectName: fileName,
+                type: "original"
+            });
             const supportOriginalFilename = supportFileDoc?.originalFilename || fileName;
+            const supportFileStream = await minioClient.getObject(bucketName, fileName);
+            const safeSupportFilename = `${supportOriginalFilename}`;
 
             form.append("support_files", supportFileStream, {
-                filename: supportOriginalFilename,
+                filename: safeSupportFilename,
                 contentType: mime.lookup(supportOriginalFilename) || 'application/octet-stream'
             });
         }
@@ -72,32 +93,76 @@ export async function kwsController(req, res) {
             form,
             {
                 headers: form.getHeaders(),
-                httpsAgent: new https.Agent({ rejectUnauthorized: false })
+                httpsAgent: new https.Agent({ rejectUnauthorized: false }),
+                maxBodyLength: Infinity,
             }
         );
+
+        const responseTime = Date.now() - startTime;
+
+        // حذف رکورد fail قبلی در صورت موفقیت
+        if (failedRecord) await UserFileModel.deleteOne({ _id: failedRecord._id });
 
         // ---- ذخیره در دیتابیس ----
         const newRecord = new UserFileModel({
             userId,
-            originalFilename: mainOriginalFilename,
+            originalFilename: mainOriginalFilename, // اسم فارسی اصلی حفظ شد
             minioObjectName: objectName,
             type: category,
             kwsResponse: kwsResponse.data,
-            supportFiles: supportFiles,
-            responseTime: Date.now() - startTime,
+            supportFiles,
+            responseTime,
             status: true
         });
 
         await newRecord.save();
 
-        // ---- پاسخ به کلاینت ----
         return res.status(200).json({
             message: "KWS processed successfully",
-            response: kwsResponse.data
+            response: kwsResponse.data,
+            mongoRecordedId: newRecord._id
         });
 
     } catch (err) {
+        const responseTime = Date.now() - startTime;
         console.error("KWS error:", err?.response?.data || err.message);
+
+        try {
+            const existingFailed = await UserFileModel.findOne({
+                userId,
+                minioObjectName: req.body.objectName,
+                type: "kwsFile",
+                status: false
+            });
+
+            if (!existingFailed) {
+                const originalFileRecord = await UserFileModel.findOne({
+                    userId,
+                    minioObjectName: req.body.objectName,
+                    type: "original",
+                });
+
+                const originalFilename = originalFileRecord?.originalFilename || "";
+
+                await new UserFileModel({
+                    userId: userId || null,
+                    originalFilename,
+                    minioObjectName: req.body.objectName || "",
+                    type: "kwsFile",
+                    kwsResponse: null,
+                    supportFiles: req.body.supportFiles || [],
+                    responseTime,
+                    status: false
+                }).save();
+            }
+        } catch (innerErr) {
+            console.error("Error saving failed KWS record:", innerErr);
+        }
+
+        if (err?.response?.status === 401) {
+            return res.status(401).json({ error: "User not found or invalid access token" });
+        }
+
         return res.status(500).json({
             error: "KWS processing failed",
             details: err?.response?.data || err.message

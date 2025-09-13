@@ -1,10 +1,12 @@
 // utils/minioUploader.js
 const { v4: uuidv4 } = require("uuid");
 const Minio = require("minio");
+const path = require("path");
+const dotenv = require("dotenv");
+const mime = require("mime-types");
 
-const dotenv = require('dotenv');
-const path = require('path');
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
+
 // MinIO Client Setup
 const minioClient = new Minio.Client({
   endPoint: process.env.MINIO_ENDPOINT,
@@ -29,12 +31,19 @@ async function ensureBucketExists() {
     throw err;
   }
 }
-
 ensureBucketExists();
 
 const uploadToMinio = async (fileData, category = "default") => {
   const fileId = uuidv4();
-  const objectName = `${category}/${fileId}-${fileData.filename}`;
+
+  // استخراج پسوند از mimetype یا نام فایل
+  const ext =
+    mime.extension(fileData.mimetype) ||
+    path.extname(fileData.filename) ||
+    "bin";
+
+  // ✅ اسم امن برای ذخیره در MinIO
+  const objectName = `${category}/${fileId}.${ext}`;
 
   await minioClient.putObject(
     bucketName,
@@ -44,7 +53,8 @@ const uploadToMinio = async (fileData, category = "default") => {
     {
       "Content-Type": fileData.mimetype,
       "x-amz-meta-fileid": fileId,
-      "x-amz-meta-filename": fileData.filename,
+      // اسم اصلی فقط Encode شده ذخیره میشه (برای جلوگیری از خطا)
+      "x-amz-meta-filename": encodeURIComponent(fileData.filename || ""),
       "x-amz-meta-category": category,
       "x-amz-meta-userid": fileData.userId || "",
     }
@@ -57,8 +67,7 @@ const uploadToMinio = async (fileData, category = "default") => {
     size: fileData.buffer.length,
     mimetype: fileData.mimetype,
     userId: fileData.userId || null,
-    originalFilename: fileData.filename, // اضافه‌شده
-
+    originalFilename: fileData.filename, // فقط برای برگردوندن به دیتابیس
   };
 };
 

@@ -1,16 +1,20 @@
 import axios from "axios";
-import { minioClient } from "../Min-Io-FileManagnent/Min-io-api/utils/uploadToMinio.js";
+import { minioClient, uploadToMinio } from "../Min-Io-FileManagnent/Min-io-api/utils/uploadToMinio.js";
 import UserFileModel from "../Models/userFileModel.js";
 import readline from "readline";
 import { PassThrough } from "stream";
 import FormData from "form-data";
+import { v4 as uuidv4 } from "uuid";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 export async function ocrController(req, res) {
   let userId = null;
   const startTime = Date.now();
 
   try {
-    let { objectName, accessToken, translate, source_lang = 'fa', target_lang } = req.body;
+    let { objectName, accessToken, translate, source_lang = "fa", target_lang } = req.body;
 
     if (!objectName || !accessToken) {
       return res.status(400).json({ error: "objectName و accessToken الزامی هستند." });
@@ -20,23 +24,36 @@ export async function ocrController(req, res) {
 
     // --- اعتبارسنجی کاربر ---
     const response = await axios.get(
-      "http://185.83.112.4:3300/api/UserQuery/GetCurrentUser",
+      "http://localhost:3300/api/UserQuery/GetCurrentUser",
       { headers: { accept: "application/json", Authorization: accessToken } }
     );
-    userId = response.data.returnValue.id;
+    userId = response.data.returnValue?.id;
     if (!userId) return res.status(401).json({ error: "User not found or invalid access token" });
+
+    // --- پیدا کردن رکورد اصلی برای حفظ اسم فارسی ---
+    const originalFileRecords = [];
+    for (const obj of objectName) {
+      const record = await UserFileModel.findOne({
+        userId,
+        minioObjectName: obj,
+        type: "original", // یا نوع فایلی که قبلاً ذخیره شده
+      });
+      if (!record) return res.status(404).json({ error: `Original file ${obj} not found in DB` });
+      originalFileRecords.push(record);
+    }
+    const originalFilenames = originalFileRecords.map(f => f.originalFilename);
 
     // --- بررسی رکورد fail قبلی ---
     const failedRecord = await UserFileModel.findOne({
       userId,
-      originalFilename: { $in: objectName },
+      originalFilename: { $in: originalFilenames },
       status: false,
     });
 
     // --- چک حجم کل استفاده شده ---
     const MAX_SIZE = 2 * 1024 * 1024 * 1024; // 2GB
     const totalSize = await UserFileModel.aggregate([
-      { $match: { userId: userId, type: "ocr" } },
+      { $match: { userId, type: "ocr" } },
       { $group: { _id: null, total: { $sum: "$size" } } },
     ]);
     const usedSize = totalSize.length > 0 ? totalSize[0].total : 0;
@@ -51,24 +68,45 @@ export async function ocrController(req, res) {
     const OCR_URL = process.env.OCR_URL;
     let targetUrl = null;
 
+    const uploadedFiles = [];
+    let totalUploadedSize = 0;
+
     if (objectName.length > 1) {
       targetUrl = `${OCR_URL}/api/mul_image_to_pdf/stream`;
-      for (const obj of objectName) {
+      for (let i = 0; i < objectName.length; i++) {
+        const obj = objectName[i];
         const fileStream = await minioClient.getObject("sarirbucket", obj);
-        form.append("files", fileStream, obj);
+        const stat = await minioClient.statObject("sarirbucket", obj);
+        totalUploadedSize += stat.size;
+
+        const safeName = `${uuidv4()}-${obj}`;
+        form.append("files", fileStream, safeName);
+
+        uploadedFiles.push({
+          originalFilename: originalFileRecords[i].originalFilename,
+          minioObjectName: safeName,
+        });
       }
     } else {
-      const singleObject = objectName[0];
-      const fileStream = await minioClient.getObject("sarirbucket", singleObject);
-      form.append("file", fileStream, singleObject);
+      const obj = objectName[0];
+      const fileStream = await minioClient.getObject("sarirbucket", obj);
+      const stat = await minioClient.statObject("sarirbucket", obj);
+      totalUploadedSize = stat.size;
 
-      const isPdf = singleObject.toLowerCase().endsWith(".pdf");
+      const safeName = `${uuidv4()}-${obj}`;
+      form.append("file", fileStream, safeName);
+
+      uploadedFiles.push({
+        originalFilename: originalFileRecords[0].originalFilename,
+        minioObjectName: safeName,
+      });
+
+      const isPdf = obj.toLowerCase().endsWith(".pdf");
       targetUrl = isPdf
         ? `${OCR_URL}/api/pdf-to-pdf/stream`
         : `${OCR_URL}/api/image-to-pdf/stream`;
     }
 
-    // --- اضافه کردن پارامترهای ترجمه به صورت string ---
     if (translate !== undefined) form.append("translate", String(translate));
     if (source_lang !== undefined) form.append("source_lang", String(source_lang));
     if (target_lang !== undefined) form.append("target_lang", String(target_lang));
@@ -81,14 +119,12 @@ export async function ocrController(req, res) {
       maxBodyLength: Infinity,
     });
 
-    // --- PassThrough برای استریم به کاربر ---
     const passStream = new PassThrough();
     ocrRes.data.pipe(passStream);
-
     res.setHeader("Content-Type", "application/json");
     passStream.pipe(res);
 
-    // --- خواندن برای ذخیره در MinIO ---
+    // --- ذخیره در MinIO و MongoDB ---
     const rl = readline.createInterface({ input: ocrRes.data });
     const ocrResponseList = [];
 
@@ -106,15 +142,15 @@ export async function ocrController(req, res) {
       if (failedRecord) await UserFileModel.deleteOne({ _id: failedRecord._id });
 
       const jsonBuffer = Buffer.from(JSON.stringify(ocrResponseList));
-      const ocrJsonPath = `ocrResults/${objectName.join("_")}_${Date.now()}.json`;
+      const ocrJsonPath = `ocrResults/${uuidv4()}.json`;
       await minioClient.putObject("sarirbucket", ocrJsonPath, jsonBuffer);
 
-      const ocrResult = new UserFileModel({
+      const newFile = new UserFileModel({
         userId,
-        originalFilename: objectName.join(", "),
-        minioObjectName: objectName.join(", "),
+        originalFilename: originalFilenames.join(", "), // نام فارسی اصلی
+        minioObjectName: uploadedFiles.map(f => f.minioObjectName).join(", "),
         ocrJsonPath,
-        size: 0,
+        size: totalUploadedSize,
         type: "ocr",
         inputIdFile: objectName.join(", "),
         textAsr: null,
@@ -122,7 +158,7 @@ export async function ocrController(req, res) {
         status: true,
         responseTime,
       });
-      await ocrResult.save();
+      await newFile.save();
     });
 
   } catch (error) {
@@ -132,17 +168,28 @@ export async function ocrController(req, res) {
     if (userId) {
       const existingFailed = await UserFileModel.findOne({
         userId,
-        originalFilename: Array.isArray(req.body.objectName)
+        minioObjectName: Array.isArray(req.body.objectName)
           ? req.body.objectName.join(", ")
           : req.body.objectName,
         status: false,
       });
       if (!existingFailed) {
-        await new UserFileModel({
+        // تلاش برای گرفتن نام فارسی اصلی از دیتابیس
+        const originalFileRecords = [];
+        const objectNames = Array.isArray(req.body.objectName) ? req.body.objectName : [req.body.objectName];
+        for (const obj of objectNames) {
+          const record = await UserFileModel.findOne({
+            userId,
+            minioObjectName: obj,
+            type: "original",
+          });
+          if (record) originalFileRecords.push(record);
+        }
+        const originalFilenames = originalFileRecords.map(f => f.originalFilename);
+
+        await UserFileModel.create({
           userId,
-          originalFilename: Array.isArray(req.body.objectName)
-            ? req.body.objectName.join(", ")
-            : req.body.objectName,
+          originalFilename: originalFilenames.join(", "),
           minioObjectName: Array.isArray(req.body.objectName)
             ? req.body.objectName.join(", ")
             : req.body.objectName,
@@ -155,11 +202,11 @@ export async function ocrController(req, res) {
           textAsr: null,
           wordASR: null,
           status: false,
-          responseTime,
-        }).save();
+          responseTime
+        });
       }
     }
 
-    res.status(500).json({ error: "خطا در پردازش فایل" });
+    res.status(500).json({ error: "خطا در پردازش فایل", details: error.message });
   }
 }

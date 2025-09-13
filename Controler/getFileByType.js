@@ -10,14 +10,14 @@ export const getUserFilesByType = async (req, res) => {
       return res.status(400).json({ message: 'فیلدهای accessToken و type الزامی هستند.' });
     }
     var userId
-  
-    const response = await axios.get('http://185.83.112.4:3300/api/UserQuery/GetCurrentUser', {
+
+    const response = await axios.get('http://localhost:3300/api/UserQuery/GetCurrentUser', {
       headers: {
         'accept': 'application/json',
         'Authorization': accessToken
       }
     });
- 
+
 
     userId = response.data.returnValue.id;
 
@@ -29,6 +29,8 @@ export const getUserFilesByType = async (req, res) => {
 
     // جستجو در دیتابیس
     const files = await UserFileModel.find({ userId, type }).sort({ createdAt: -1 });
+    console.log(files);
+
 
     if (files.length === 0) {
       return res.status(404).json({ message: 'هیچ فایلی با این مشخصات یافت نشد.' });
@@ -41,11 +43,13 @@ export const getUserFilesByType = async (req, res) => {
         const url = await minioClient.presignedGetObject(
           bucketName,
           file.minioObjectName,
-          60 * 60 // مدت اعتبار لینک: ۱ ساعت
+          600 * 600 // مدت اعتبار لینک: ۱ ساعت
         );
         return {
           ...file.toObject(),
-          fileUrl: url
+          fileUrl: url,
+          displayName: file.originalFilename // ✅ اسم اصلی فارسی
+
         };
       })
     );

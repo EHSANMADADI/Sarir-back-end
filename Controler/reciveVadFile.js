@@ -8,7 +8,7 @@ export async function reciveVadFile(req, res) {
         const { accessToken } = req.params;
         var userId
     
-        const response = await axios.get('https://185.83.112.4:3300/api/UserQuery/GetCurrentUser', {
+        const response = await axios.get('https://localhost:3300/api/UserQuery/GetCurrentUser', {
           headers: {
             'accept': 'application/json',
             'Authorization': accessToken

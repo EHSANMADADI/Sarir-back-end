@@ -14,7 +14,7 @@ export async function reciveSpeechFile(req, res) {
 
         var userId
       
-        const response = await axios.get('http://185.83.112.4:3300/api/UserQuery/GetCurrentUser', {
+        const response = await axios.get('http://localhost:3300/api/UserQuery/GetCurrentUser', {
             httpsAgent: agent,
             headers: {
                 'accept': 'application/json',

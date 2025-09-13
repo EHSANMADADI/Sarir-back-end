@@ -65,8 +65,8 @@ const userFileSchema = new mongoose.Schema({
         require: false,
         default: null
     },
-    responsegroph:{
-         type: mongoose.Schema.Types.Mixed,
+    responsegroph: {
+        type: mongoose.Schema.Types.Mixed,
         require: false,
         default: null
     },
@@ -81,7 +81,7 @@ const userFileSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
- kwsResponse: { type: mongoose.Schema.Types.Mixed, default: null },
+    kwsResponse: { type: mongoose.Schema.Types.Mixed, default: null },
 
     // 🔹  kws فایل‌های پشتیبان ارسال‌شده همراه این درخواست
     supportFiles: {

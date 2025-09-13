@@ -5,17 +5,21 @@ import axios from 'axios';
 import https from 'https';
 
 export async function reciveFile(req, res) {
+   var userId=null
     try {
         const { accessToken } = req.params;
-        var userId
+        const ssourl='http://localhost:3300/api/UserQuery/GetCurrentUser'
+       
       
-        const response = await axios.get('http://185.83.112.4:3300/api/UserQuery/GetCurrentUser', {
+        const response = await axios.get(`${ssourl}`, {
           headers: {
             'accept': 'application/json',
             'Authorization': accessToken
           }
         });
         userId = response.data.returnValue.id;
+        console.log('userId =========>>>>>>>>>>',userId);
+        
 
         if (!userId) {
           return res.status(401).json({ error: 'User not found or invalid access token' });
