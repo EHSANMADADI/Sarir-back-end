@@ -6,6 +6,7 @@ import FormData from "form-data";
 export async function imgDbController(req, res) {
   const startTime = Date.now();
   let userId = null;
+  const bucketName = "sarirbucket";
 
   try {
     const { objectName, accessToken } = req.body;
@@ -43,10 +44,29 @@ export async function imgDbController(req, res) {
       status: false,
     });
 
-    // --- 4️⃣ گرفتن فایل از MinIO ---
-    const fileStream = await minioClient.getObject("sarirbucket", objectName);
+    // --- 4️⃣ بررسی محدودیت حجم ---
+    const MAX_SIZE = 2 * 1024 * 1024 * 1024; // 2GB
+    const totalSize = await UserFileModel.aggregate([
+      { $match: { userId, type: "IMGdb" } },
+      { $group: { _id: null, total: { $sum: "$size" } } },
+    ]);
+    const usedSize = totalSize.length > 0 ? totalSize[0].total : 0;
 
-    // --- 5️⃣ ساخت FormData و ارسال به API پردازش ---
+    const statInfo = await minioClient.statObject(bucketName, objectName);
+    const newFileSize = statInfo.size || 0;
+
+    if (usedSize + newFileSize > MAX_SIZE) {
+      return res.status(402).json({
+        error: `شما به سقف حجم مجاز (${(MAX_SIZE / 1024 ** 3).toFixed(2)} GB) رسیده‌اید`,
+        used: (usedSize / 1024 ** 3).toFixed(2) + " GB",
+        newFile: (newFileSize / 1024 ** 3).toFixed(2) + " GB",
+      });
+    }
+
+    // --- 5️⃣ گرفتن فایل از MinIO ---
+    const fileStream = await minioClient.getObject(bucketName, objectName);
+
+    // --- 6️⃣ ساخت FormData و ارسال به API پردازش ---
     const formData = new FormData();
     formData.append("file", fileStream, { filename: originalFilename });
 
@@ -67,7 +87,7 @@ export async function imgDbController(req, res) {
       originalFilename,   // ✅ اسم فارسی حفظ شد
       minioObjectName: objectName,
       MinIofileId: "",
-      size: 0,
+      size: newFileSize,  // ✅ ذخیره سایز واقعی
       type: "IMGdb",
       inputIdFile: objectName,
       textAsr: null,

@@ -52,7 +52,7 @@ export async function graphController(req, res) {
     // --- 4️⃣ محدودیت حجم ---
     const MAX_SIZE = 2 * 1024 * 1024 * 1024;
     const totalSize = await UserFileModel.aggregate([
-      { $match: { userId, type: 'vad' } },
+      { $match: { userId, type: 'graph' } },
       { $group: { _id: null, total: { $sum: "$size" } } }
     ]);
     const usedSize = totalSize.length > 0 ? totalSize[0].total : 0;
@@ -95,7 +95,7 @@ export async function graphController(req, res) {
       minioObjectName: objectName,
       MinIofileId: "",
       size: 0,
-      type: "vad",
+      type: "graph",
       inputIdFile: objectName,
       textAsr: null,
       wordASR: null,
@@ -137,7 +137,7 @@ export async function graphController(req, res) {
           minioObjectName: req.body.objectName || "",
           MinIofileId: "",
           size: 0,
-          type: "vad",
+          type: "graph",
           inputIdFile: req.body.objectName || "",
           textAsr: null,
           wordASR: null,
