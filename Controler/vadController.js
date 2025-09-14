@@ -48,16 +48,7 @@ export async function vadController(req, res) {
         // --- بررسی رکورد ناموفق قبلی ---
         const failedRecord = await UserFileModel.findOne({ userId, originalFilename, status: false });
 
-        // --- محدودیت حجم ---
-        const MAX_SIZE = 2 * 1024 * 1024 * 1024;
-        const totalSize = await UserFileModel.aggregate([
-            { $match: { userId, type: 'vad' } },
-            { $group: { _id: null, total: { $sum: "$size" } } }
-        ]);
-        const usedSize = totalSize.length > 0 ? totalSize[0].total : 0;
-        if (usedSize >= MAX_SIZE) {
-            return res.status(402).json({ error: `شما به سقف حجم مجاز (${(MAX_SIZE / (1024 ** 3)).toFixed(2)} GB) رسیده‌اید` });
-        }
+       
 
         // --- گرفتن فایل ورودی از MinIO (استریم) ---
         const fileStream = await minioClient.getObject(bucketName, objectName);
