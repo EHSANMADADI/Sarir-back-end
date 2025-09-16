@@ -33,6 +33,22 @@ app.use('/public', express.static(path.join(__dirname, 'public')));
 const buildPath = path.join(__dirname, 'out');
 app.use(express.static(buildPath));
 
+// --- مسیرهای API ---
+app.use('/api/ath', athRouter);
+app.use('/uploadUrginalFile', UploadOrginalFileRoute);
+app.use('/reciveFile', userFileUplodedRoute);
+app.use('/deletFile', deleteFileRoute);
+app.use('/vad', vadRoute);
+app.use('/speech', speechRoute);
+app.use('/ASR', asrRoute);
+app.use('/ocr', ocrRoute);
+app.use('/api', LimitRoute);
+app.use('/superResolation', superResolationRoute);
+app.use('/translate', TranslateRoute);
+app.use('/ImageDb', imageDbRoute);
+app.use('/KWS', kwsRoute);
+app.use('/graph', graphRoute);
+
 // fallback برای SPA اصلی
 app.get('*', (req, res, next) => {
   // اگر مسیر با /graphe شروع شود، اجازه بده به fallback /graphe برود
@@ -51,20 +67,6 @@ app.get('/graphe/*', (req, res) => {
   res.sendFile(path.join(grapheBuildPath, 'index.html'));
 });
 
-// --- مسیرهای API ---
-app.use('/api/ath', athRouter);
-app.use('/uploadUrginalFile', UploadOrginalFileRoute);
-app.use('/reciveFile', userFileUplodedRoute);
-app.use('/deletFile', deleteFileRoute);
-app.use('/vad', vadRoute);
-app.use('/speech', speechRoute);
-app.use('/ASR', asrRoute);
-app.use('/ocr', ocrRoute);
-app.use('/api', LimitRoute);
-app.use('/superResolation', superResolationRoute);
-app.use('/translate', TranslateRoute);
-app.use('/ImageDb', imageDbRoute);
-app.use('/KWS', kwsRoute);
-app.use('/graph', graphRoute);
+
 
 export default app;
