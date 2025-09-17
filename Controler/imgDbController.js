@@ -69,7 +69,8 @@ export async function imgDbController(req, res) {
     // --- 6️⃣ ساخت FormData و ارسال به API پردازش ---
     const formData = new FormData();
     formData.append("file", fileStream, { filename: originalFilename });
-
+   console.log('imgDb started');
+   
     const apiResponse = await axios.post(
       "http://192.168.4.177:17020/api/image-to-DB",
       formData,

@@ -5,7 +5,6 @@ import UserFileModel from '../Models/userFileModel.js';
 import { v4 as uuidv4 } from 'uuid';
 import FormData from 'form-data';
 import mime from 'mime-types';
-import path from 'path';
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -32,7 +31,7 @@ export async function vadController(req, res) {
         userId = response.data.returnValue?.id;
         if (!userId) return res.status(401).json({ error: 'User not found or invalid access token' });
 
-        // --- پیدا کردن رکورد اصلی برای حفظ اسم فارسی ---
+        // --- پیدا کردن رکورد اصلی ---
         const originalFileRecord = await UserFileModel.findOne({
             userId,
             minioObjectName: objectName,
@@ -48,12 +47,10 @@ export async function vadController(req, res) {
         // --- بررسی رکورد ناموفق قبلی ---
         const failedRecord = await UserFileModel.findOne({ userId, originalFilename, status: false });
 
-       
-
-        // --- گرفتن فایل ورودی از MinIO (استریم) ---
+        // --- گرفتن فایل ورودی از MinIO ---
         const fileStream = await minioClient.getObject(bucketName, objectName);
 
-        // --- ساخت FormData و ارسال مستقیم به VAD ---
+        // --- ارسال فایل به VAD ---
         const formData = new FormData();
         formData.append('file', fileStream, { filename: `${uuidv4()}-${originalFilename}` });
 
@@ -69,18 +66,21 @@ export async function vadController(req, res) {
         const { output_audio } = vadResponse.data;
         if (!output_audio) throw new Error('VAD processing failed, output_audio not found');
 
-        // --- گرفتن خروجی از سرویس VAD ---
+        // --- دانلود خروجی از VAD ---
         const outputAudioUrl = `${ASR_URL}${output_audio}`;
+        console.log('url vad', outputAudioUrl);
         const outputResponse = await axios.get(outputAudioUrl, { responseType: 'arraybuffer' });
 
-        // --- آپلود خروجی به MinIO با اسم امن ---
-        const fileBuffer = Buffer.from(outputResponse.data);
-        const ext = path.extname(originalFilename) || "mp3";
-        const safeFilename = `${uuidv4()}${ext}`;
-        const mimetype = mime.lookup(safeFilename) || 'audio/mpeg';
+        const inputBuffer = Buffer.from(outputResponse.data);
 
+        // --- تعیین پسوند و mimetype فایل ---
+        const extension = output_audio.split('.').pop().toLowerCase();
+        const safeFilename = `${uuidv4()}.${extension}`;
+        const mimetype = mime.lookup(extension) || 'application/octet-stream';
+
+        // --- آپلود خروجی به MinIO ---
         const fileData = {
-            buffer: fileBuffer,
+            buffer: inputBuffer,
             filename: safeFilename,
             mimetype,
             userId,
@@ -95,11 +95,11 @@ export async function vadController(req, res) {
         // --- ذخیره رکورد موفق ---
         const newFile = new UserFileModel({
             userId,
-            originalFilename,           // ✅ اسم فارسی اصلی حفظ شد
+            originalFilename,
             minioObjectName: minIo.objectName,
             MinIofileId: minIo.fileId,
             size: minIo.size,
-            mimetype: minIo.mimetype,
+            mimetype,
             type: 'vad',
             inputIdFile: objectName,
             textAsr: null,
@@ -108,19 +108,18 @@ export async function vadController(req, res) {
         });
         await newFile.save();
 
-        // --- ارسال خروجی به کاربر با هدر امن ---
+        // --- ارسال خروجی به کاربر ---
         res.setHeader("Content-Type", mimetype);
         res.setHeader(
             "Content-Disposition",
-            `attachment; filename="${safeFilename}"; filename*=UTF-8''${encodeURIComponent(originalFilename)}`
+            `attachment; filename="${safeFilename}"; filename*=UTF-8''${encodeURIComponent(originalFilename)}.${extension}`
         );
-        res.send(fileBuffer);
+        res.send(inputBuffer);
 
     } catch (error) {
         const responseTime = Date.now() - startTime;
         console.error('Error in VAD Controller:', error);
 
-        // ذخیره رکورد ناموفق فقط در صورت نبود قبلی
         const existingFailed = await UserFileModel.findOne({ userId, minioObjectName: req.body.objectName, status: false });
         if (!existingFailed) {
             const originalFileRecord = await UserFileModel.findOne({
@@ -145,7 +144,9 @@ export async function vadController(req, res) {
             });
         }
 
-        if (error?.response?.status === 401) return res.status(401).json({ error: 'User not found or invalid access token' });
+        if (error?.response?.status === 401) {
+            return res.status(401).json({ error: 'User not found or invalid access token' });
+        }
 
         res.status(500).json({ error: 'Internal server error', details: error.message });
     }

@@ -63,6 +63,8 @@ export async function asrController(req, res) {
     const ASR_URL = process.env.ASR_URL_Javad;
 
     // ارسال فایل به API ASR
+    console.log('asr started');
+    
     const response = await axios.post(`${ASR_URL}/asr`, formData, {
       headers: formData.getHeaders(),
       maxBodyLength: Infinity,

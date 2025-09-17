@@ -68,6 +68,9 @@ export async function UploadOrginalFile(req, res) {
       status: true,
       responseTime
     });
+    
+    console.log('file-oploaded');
+    
 
     return res.status(201).json({
       message: 'File uploaded and saved to MongoDB successfully',
