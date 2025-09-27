@@ -89,6 +89,27 @@ const userFileSchema = new mongoose.Schema({
         default: []
     },
 
+    ocrJsonPath: {
+        type: String,
+        require: false
+    },
+    ocrImages: {
+        type: [{ type: String }],
+        require: false
+    },
+    ocrPdf:{
+         type:String,
+        require:false
+    },
+    ocrDocx:{
+         type:String,
+        require:false
+    },
+    ocrText:{
+         type:String,
+        require:false
+    }
+
 
 });
 

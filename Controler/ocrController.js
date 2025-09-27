@@ -1,5 +1,5 @@
 import axios from "axios";
-import { minioClient, uploadToMinio } from "../Min-Io-FileManagnent/Min-io-api/utils/uploadToMinio.js";
+import { minioClient } from "../Min-Io-FileManagnent/Min-io-api/utils/uploadToMinio.js";
 import UserFileModel from "../Models/userFileModel.js";
 import readline from "readline";
 import { PassThrough } from "stream";
@@ -30,13 +30,13 @@ export async function ocrController(req, res) {
     userId = response.data.returnValue?.id;
     if (!userId) return res.status(401).json({ error: "User not found or invalid access token" });
 
-    // --- پیدا کردن رکورد اصلی برای حفظ اسم فارسی ---
+    // --- پیدا کردن رکورد اصلی ---
     const originalFileRecords = [];
     for (const obj of objectName) {
       const record = await UserFileModel.findOne({
         userId,
         minioObjectName: obj,
-        type: "original", // یا نوع فایلی که قبلاً ذخیره شده
+        type: "original",
       });
       if (!record) return res.status(404).json({ error: `Original file ${obj} not found in DB` });
       originalFileRecords.push(record);
@@ -112,6 +112,8 @@ export async function ocrController(req, res) {
     if (target_lang !== undefined) form.append("target_lang", String(target_lang));
 
     // --- ارسال به OCR ---
+    console.log("start ocr process");
+
     const ocrRes = await axios.post(targetUrl, form, {
       headers: form.getHeaders(),
       responseType: "stream",
@@ -128,9 +130,51 @@ export async function ocrController(req, res) {
     const rl = readline.createInterface({ input: ocrRes.data });
     const ocrResponseList = [];
 
-    rl.on("line", (line) => {
+    // مسیرها برای ذخیره در DB
+    const savedImages = [];
+    let savedPdf = null;
+    let savedDocx = null;
+    let savedTxt = [];
+
+    rl.on("line", async (line) => {
       try {
-        ocrResponseList.push(JSON.parse(line.trim()));
+        const parsed = JSON.parse(line.trim());
+        ocrResponseList.push(parsed);
+        console.log('ocrResponseList', ocrResponseList);
+
+
+        // ذخیره تصویر هر صفحه
+        if (parsed.event === "page_ocr" && parsed.image_base64) {
+          const imgBuffer = Buffer.from(parsed.image_base64, "base64");
+          const imgPath = `ocrResults/images/${uuidv4()}.png`;
+          await minioClient.putObject("sarirbucket", imgPath, imgBuffer);
+          savedImages.push(imgPath);
+          parsed.minioImagePath = imgPath;
+          savedTxt.push(parsed.text || "");
+        }
+
+        // ذخیره فایل‌های نهایی
+        if (parsed.event === "ocr_files_ready") {
+          const filesToDownload = [
+            { key: "pdf_url", name: `ocrResults/${uuidv4()}.pdf` },
+            { key: "docx_url", name: `ocrResults/${uuidv4()}.docx` },
+            { key: "text_url", name: `ocrResults/${uuidv4()}.txt` },
+          ];
+
+          for (const f of filesToDownload) {
+            if (parsed[f.key]) {
+              const fileRes = await axios.get(`${OCR_URL}${parsed[f.key]}`, {
+                responseType: "stream",
+              });
+              await minioClient.putObject("sarirbucket", f.name, fileRes.data);
+              parsed[`minio_${f.key}`] = f.name;
+
+              if (f.key === "pdf_url") savedPdf = f.name;
+              if (f.key === "docx_url") savedDocx = f.name;
+              // if (f.key === "text_url") savedTxt = f.name;
+            }
+          }
+        }
       } catch {
         console.warn("خطا در پارس JSON:", line);
       }
@@ -147,9 +191,13 @@ export async function ocrController(req, res) {
 
       const newFile = new UserFileModel({
         userId,
-        originalFilename: originalFilenames.join(", "), // نام فارسی اصلی
+        originalFilename: originalFilenames.join(", "),
         minioObjectName: uploadedFiles.map(f => f.minioObjectName).join(", "),
         ocrJsonPath,
+        ocrImages: savedImages, // مسیر تصاویر
+        ocrPdf: savedPdf,       // مسیر PDF
+        ocrDocx: savedDocx,     // مسیر DOCX
+        ocrText: savedTxt.join("\n"),      // مسیر TXT
         size: totalUploadedSize,
         type: "ocr",
         inputIdFile: objectName.join(", "),
@@ -174,7 +222,6 @@ export async function ocrController(req, res) {
         status: false,
       });
       if (!existingFailed) {
-        // تلاش برای گرفتن نام فارسی اصلی از دیتابیس
         const originalFileRecords = [];
         const objectNames = Array.isArray(req.body.objectName) ? req.body.objectName : [req.body.objectName];
         for (const obj of objectNames) {
@@ -194,6 +241,10 @@ export async function ocrController(req, res) {
             ? req.body.objectName.join(", ")
             : req.body.objectName,
           ocrJsonPath: null,
+          ocrImages: [],
+          ocrPdf: null,
+          ocrDocx: null,
+          ocrText: null,
           size: 0,
           type: "ocr",
           inputIdFile: Array.isArray(req.body.objectName)
@@ -202,7 +253,7 @@ export async function ocrController(req, res) {
           textAsr: null,
           wordASR: null,
           status: false,
-          responseTime
+          responseTime,
         });
       }
     }

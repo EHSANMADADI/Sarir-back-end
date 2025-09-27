@@ -99,7 +99,7 @@ export async function graphController(req, res) {
       inputIdFile: objectName,
       textAsr: null,
       wordASR: null,
-      responseGraph: responseData,
+      responsegroph: responseData,
       status: true,
       responseTime
     });

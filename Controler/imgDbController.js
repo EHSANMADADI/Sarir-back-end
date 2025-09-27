@@ -85,10 +85,10 @@ export async function imgDbController(req, res) {
     // --- ذخیره رکورد موفق ---
     const newFile = new UserFileModel({
       userId,
-      originalFilename,   // ✅ اسم فارسی حفظ شد
+      originalFilename,   //  
       minioObjectName: objectName,
       MinIofileId: "",
-      size: newFileSize,  // ✅ ذخیره سایز واقعی
+      size: newFileSize,  // ✅ 
       type: "IMGdb",
       inputIdFile: objectName,
       textAsr: null,
