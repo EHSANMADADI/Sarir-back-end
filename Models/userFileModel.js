@@ -97,17 +97,17 @@ const userFileSchema = new mongoose.Schema({
         type: [{ type: String }],
         require: false
     },
-    ocrPdf:{
-         type:String,
-        require:false
+    ocrPdf: {
+        type: String,
+        require: false
     },
-    ocrDocx:{
-         type:String,
-        require:false
+    ocrDocx: {
+        type: String,
+        require: false
     },
-    ocrText:{
-         type:String,
-        require:false
+    ocrText: {
+        type: [String],
+        require: false
     }
 
 

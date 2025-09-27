@@ -197,7 +197,7 @@ export async function ocrController(req, res) {
         ocrImages: savedImages, // مسیر تصاویر
         ocrPdf: savedPdf,       // مسیر PDF
         ocrDocx: savedDocx,     // مسیر DOCX
-        ocrText: savedTxt.join("\n"),      // مسیر TXT
+        ocrText: savedTxt,      // مسیر TXT
         size: totalUploadedSize,
         type: "ocr",
         inputIdFile: objectName.join(", "),
