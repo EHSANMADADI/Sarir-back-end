@@ -9,7 +9,7 @@ export async function asrController(req, res) {
   let userId = null;
 
   try {
-    const { objectName, accessToken,workSpace:workSpace} = req.body;
+    const { objectName, accessToken,workSpace='test'} = req.body;
     const bucketName = "sarirbucket";
 
     if (!objectName || !accessToken) {

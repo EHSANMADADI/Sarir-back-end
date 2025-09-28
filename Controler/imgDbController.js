@@ -9,7 +9,7 @@ export async function imgDbController(req, res) {
   const bucketName = "sarirbucket";
 
   try {
-    const { objectName, accessToken,workSpace} = req.body;
+    const { objectName, accessToken,workSpace='test'} = req.body;
 
     if (!objectName || !accessToken) {
       return res.status(400).json({ error: "objectName و accessToken الزامی هستند." });

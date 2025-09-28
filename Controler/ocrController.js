@@ -14,7 +14,7 @@ export async function ocrController(req, res) {
   const startTime = Date.now();
 
   try {
-    let { objectName, accessToken, translate, source_lang = "fa", target_lang,workSpace } = req.body;
+    let { objectName, accessToken, translate, source_lang = "fa", target_lang, workSpace = 'test' } = req.body;
 
     if (!objectName || !accessToken) {
       return res.status(400).json({ error: "objectName و accessToken الزامی هستند." });
@@ -140,7 +140,6 @@ export async function ocrController(req, res) {
       try {
         const parsed = JSON.parse(line.trim());
         ocrResponseList.push(parsed);
-        console.log('ocrResponseList', ocrResponseList);
 
 
         // ذخیره تصویر هر صفحه
@@ -150,31 +149,54 @@ export async function ocrController(req, res) {
           await minioClient.putObject("sarirbucket", imgPath, imgBuffer);
           savedImages.push(imgPath);
           parsed.minioImagePath = imgPath;
+
           savedTxt.push(parsed.text || "");
         }
 
         // ذخیره فایل‌های نهایی
         if (parsed.event === "ocr_files_ready") {
           const filesToDownload = [
-            { key: "pdf_url", name: `ocrResults/${uuidv4()}.pdf` },
-            { key: "docx_url", name: `ocrResults/${uuidv4()}.docx` },
-            { key: "text_url", name: `ocrResults/${uuidv4()}.txt` },
+            { key: "pdf_url", ext: "pdf" },
+            { key: "docx_url", ext: "docx" },
+            { key: "text_url", ext: "txt" },
           ];
 
           for (const f of filesToDownload) {
             if (parsed[f.key]) {
+              const originalName = parsed[f.key].split("/").pop(); // اسم فایل واقعی از OCR
+              const savePath = `ocrResults/${originalName}`;
+              if (savePath.toLowerCase().endsWith('.pdf')) {
+                console.log('pdf value', savePath);
+
+                savedPdf = savePath;
+              }
+              if (savePath.toLowerCase().endsWith('.docx')) {
+                console.log('docx value', savePath);
+
+                savedDocx = savePath;
+              }
               const fileRes = await axios.get(`${OCR_URL}${parsed[f.key]}`, {
                 responseType: "stream",
               });
-              await minioClient.putObject("sarirbucket", f.name, fileRes.data);
-              parsed[`minio_${f.key}`] = f.name;
 
-              if (f.key === "pdf_url") savedPdf = f.name;
-              if (f.key === "docx_url") savedDocx = f.name;
-              // if (f.key === "text_url") savedTxt = f.name;
+              await minioClient.putObject("sarirbucket", savePath, fileRes.data);
+              parsed[`minio_${f.key}`] = savePath;
+
+
+              if (f.key === "pdf_url") savedPdf = savePath;
+              if (f.key === "docx_url") savedDocx = savePath;
+              if (f.key === "text_url") {
+                const buffers = [];
+                fileRes.data.on("data", (chunk) => buffers.push(chunk));
+                fileRes.data.on("end", () => {
+                  const textContent = Buffer.concat(buffers).toString("utf-8");
+                  savedTxt.push(textContent);
+                });
+              }
             }
           }
         }
+
       } catch {
         console.warn("خطا در پارس JSON:", line);
       }
@@ -205,7 +227,7 @@ export async function ocrController(req, res) {
         wordASR: null,
         status: true,
         responseTime,
-        workSpace:workSpace
+        workSpace: workSpace
       });
       await newFile.save();
     });
@@ -255,7 +277,7 @@ export async function ocrController(req, res) {
           wordASR: null,
           status: false,
           responseTime,
-          workSpace:workSpace
+          workSpace: workSpace
         });
       }
     }

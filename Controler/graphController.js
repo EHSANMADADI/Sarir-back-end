@@ -12,7 +12,7 @@ export async function graphController(req, res) {
   let userId = null;
 
   try {
-    const { objectName, accessToken,workSpace } = req.body;
+    const { objectName, accessToken,workSpace='test' } = req.body;
     const bucketName = "sarirbucket";
     const graph_url = process.env.graph_url;
 

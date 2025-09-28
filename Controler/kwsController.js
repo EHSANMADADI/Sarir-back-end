@@ -21,7 +21,7 @@ export async function kwsController(req, res) {
             accessToken,
             lang = 'fa',
             category = 'kwsFile',
-            workSpace
+           workSpace='test'
         } = req.body;
 
         const bucketName = "sarirbucket";

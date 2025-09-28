@@ -14,7 +14,7 @@ export async function vadController(req, res) {
     let userId = null;
 
     try {
-        const { objectName, accessToken, category = 'VadFile',workSpace } = req.body;
+        const { objectName, accessToken, category = 'VadFile',workSpace='test' } = req.body;
         const bucketName = "sarirbucket";
         const ASR_URL = process.env.ASR_URL;
 

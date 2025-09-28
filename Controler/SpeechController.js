@@ -13,7 +13,7 @@ export async function SpeechController(req, res) {
     let userId = null;
 
     try {
-        const { objectName, accessToken, category = 'SpeechFile',workSpace } = req.body;
+        const { objectName, accessToken, category = 'SpeechFile',workSpace='test' } = req.body;
         const bucketName = "sarirbucket";
         const ASR_URL = process.env.ASR_URL;
 

@@ -11,7 +11,7 @@ export async function superResolationContoroler(req, res) {
   const bucketName = "sarirbucket";
 
   try {
-    const { objectName, accessToken, category = "SuperResolation",workSpace } = req.body;
+    const { objectName, accessToken, category = "SuperResolation",workSpace='test'} = req.body;
 
     if (!objectName || !accessToken) {
       return res.status(400).json({ error: "objectName و accessToken الزامی هستند." });
