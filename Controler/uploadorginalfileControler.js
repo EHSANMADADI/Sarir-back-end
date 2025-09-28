@@ -6,7 +6,7 @@ import axios from 'axios';
 export async function UploadOrginalFile(req, res) {
   try {
     const startTime = Date.now();
-    const { accessToken, category = "original" } = req.body;
+    const { accessToken, category = "original", workSpace } = req.body;
     const file = req.file;
 
     if (!file || !accessToken) {
@@ -66,11 +66,12 @@ export async function UploadOrginalFile(req, res) {
       inputIdFile: null,
       textAsr: null,
       status: true,
-      responseTime
+      responseTime,
+      workSpace: workSpace
     });
-    
+
     console.log('file-oploaded');
-    
+
 
     return res.status(201).json({
       message: 'File uploaded and saved to MongoDB successfully',

@@ -20,7 +20,8 @@ export async function kwsController(req, res) {
             supportName,
             accessToken,
             lang = 'fa',
-            category = 'kwsFile'
+            category = 'kwsFile',
+            workSpace
         } = req.body;
 
         const bucketName = "sarirbucket";
@@ -112,7 +113,8 @@ export async function kwsController(req, res) {
             kwsResponse: kwsResponse.data,
             supportFiles,
             responseTime,
-            status: true
+            status: true,
+            workSpace:workSpace
         });
 
         await newRecord.save();
@@ -152,7 +154,8 @@ export async function kwsController(req, res) {
                     kwsResponse: null,
                     supportFiles: req.body.supportFiles || [],
                     responseTime,
-                    status: false
+                    status: false,
+                    workSpace:workSpace
                 }).save();
             }
         } catch (innerErr) {

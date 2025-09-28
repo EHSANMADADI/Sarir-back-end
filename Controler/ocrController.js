@@ -14,7 +14,7 @@ export async function ocrController(req, res) {
   const startTime = Date.now();
 
   try {
-    let { objectName, accessToken, translate, source_lang = "fa", target_lang } = req.body;
+    let { objectName, accessToken, translate, source_lang = "fa", target_lang,workSpace } = req.body;
 
     if (!objectName || !accessToken) {
       return res.status(400).json({ error: "objectName و accessToken الزامی هستند." });
@@ -205,6 +205,7 @@ export async function ocrController(req, res) {
         wordASR: null,
         status: true,
         responseTime,
+        workSpace:workSpace
       });
       await newFile.save();
     });
@@ -254,6 +255,7 @@ export async function ocrController(req, res) {
           wordASR: null,
           status: false,
           responseTime,
+          workSpace:workSpace
         });
       }
     }

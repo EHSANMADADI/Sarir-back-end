@@ -14,7 +14,7 @@ export async function vadController(req, res) {
     let userId = null;
 
     try {
-        const { objectName, accessToken, category = 'VadFile' } = req.body;
+        const { objectName, accessToken, category = 'VadFile',workSpace } = req.body;
         const bucketName = "sarirbucket";
         const ASR_URL = process.env.ASR_URL;
 
@@ -104,7 +104,8 @@ export async function vadController(req, res) {
             inputIdFile: objectName,
             textAsr: null,
             status: true,
-            responseTime
+            responseTime,
+            workSpace:workSpace
         });
         await newFile.save();
 
@@ -140,7 +141,8 @@ export async function vadController(req, res) {
                 inputIdFile: req.body.objectName,
                 textAsr: null,
                 status: false,
-                responseTime
+                responseTime,
+                workSpace:workSpace
             });
         }
 

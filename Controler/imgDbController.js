@@ -9,7 +9,7 @@ export async function imgDbController(req, res) {
   const bucketName = "sarirbucket";
 
   try {
-    const { objectName, accessToken } = req.body;
+    const { objectName, accessToken,workSpace} = req.body;
 
     if (!objectName || !accessToken) {
       return res.status(400).json({ error: "objectName و accessToken الزامی هستند." });
@@ -97,6 +97,7 @@ export async function imgDbController(req, res) {
       responseTime: totalTime,
       responseSuper: null,
       responseImgDb: apiResponse.data.lm_studio_result,
+      workSpace:workSpace
     });
     await newFile.save();
 
@@ -138,6 +139,7 @@ export async function imgDbController(req, res) {
           status: false,
           responseTime,
           responseSuper: null,
+          workSpace:workSpace
         });
       }
     } catch (innerErr) {

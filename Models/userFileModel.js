@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { type } from 'os';
 const userFileSchema = new mongoose.Schema({
     userId: {
         type: String,
@@ -108,6 +109,10 @@ const userFileSchema = new mongoose.Schema({
     ocrText: {
         type: [String],
         require: false
+    },
+    workSpace:{
+        type:String,
+        require:false,
     }
 
 

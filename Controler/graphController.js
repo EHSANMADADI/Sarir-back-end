@@ -12,7 +12,7 @@ export async function graphController(req, res) {
   let userId = null;
 
   try {
-    const { objectName, accessToken } = req.body;
+    const { objectName, accessToken,workSpace } = req.body;
     const bucketName = "sarirbucket";
     const graph_url = process.env.graph_url;
 
@@ -101,7 +101,8 @@ export async function graphController(req, res) {
       wordASR: null,
       responsegroph: responseData,
       status: true,
-      responseTime
+      responseTime,
+      workSpace:workSpace
     });
     await newFile.save();
 
@@ -143,7 +144,8 @@ export async function graphController(req, res) {
           wordASR: null,
           responseGraph: null,
           status: false,
-          responseTime
+          responseTime,
+          workSpace:workSpace
         }).save();
       }
     }
