@@ -3,35 +3,46 @@ import { minioClient } from "../Min-Io-FileManagnent/Min-io-api/utils/uploadToMi
 import UserFileModel from "../Models/userFileModel.js";
 import { v4 as uuidv4 } from "uuid";
 import FormData from "form-data";
+import dotenv from "dotenv";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+dotenv.config();
+
+// ساخت __dirname در ESModule
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export async function asrControllerOld(req, res) {
   const startTime = Date.now();
   let userId = null;
+  let tempFilePath = null; // مسیر فایل موقت برای پاک‌سازی بعدی
   try {
-    const { objectName, accessToken,language,n_params,mode} = req.body;
+    const { objectName, accessToken, language, n_params, mode } = req.body;
     const bucketName = "sarirbucket";
+    const ASR_URL_OLD = process.env.ASR_URL_OLD;
 
-    if (!objectName || !accessToken || !language || !n_params|| !mode) {
-      return res.status(400).json({ error: "objectName and accessToken and language and params and mode are required" });
+    if (!objectName || !accessToken || !language || !n_params || !mode) {
+      return res
+        .status(400)
+        .json({ error: "objectName and accessToken and language and params and mode are required" });
     }
 
     // احراز هویت کاربر
-    const userResponse = await axios.get(
-      "http://localhost:3300/api/UserQuery/GetCurrentUser",
-      {
-        headers: {
-          accept: "application/json",
-          Authorization: accessToken,
-        },
-      }
-    );
+    const userResponse = await axios.get("http://localhost:3300/api/UserQuery/GetCurrentUser", {
+      headers: {
+        accept: "application/json",
+        Authorization: accessToken,
+      },
+    });
 
     userId = userResponse.data.returnValue?.id;
     if (!userId) {
       return res.status(401).json({ error: "User not found or invalid access token" });
     }
 
-    // پیدا کردن رکورد اصلی فایل برای حفظ اسم اصلی فارسی
+    // پیدا کردن رکورد اصلی فایل
     const originalFileRecord = await UserFileModel.findOne({
       userId,
       minioObjectName: objectName,
@@ -44,44 +55,49 @@ export async function asrControllerOld(req, res) {
 
     const originalFilename = originalFileRecord.originalFilename;
 
-    // حذف رکورد fail قبلی در صورت وجود
-    const failedRecord = await UserFileModel.findOne({
-      userId,
-      originalFilename,
-      status: false,
+    // مسیر ذخیره فایل موقت
+    const tempDir = path.join(__dirname, "../tmp");
+    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+    tempFilePath = path.join(tempDir, `${uuidv4()}-${originalFilename}`);
+
+    // دریافت فایل از MinIO و ذخیره روی دیسک
+    const fileStream = await minioClient.getObject(bucketName, objectName);
+    const writeStream = fs.createWriteStream(tempFilePath);
+    await new Promise((resolve, reject) => {
+      fileStream.pipe(writeStream);
+      fileStream.on("end", resolve);
+      fileStream.on("error", reject);
     });
 
-    // دریافت فایل از MinIO
-    const fileStream = await minioClient.getObject(bucketName, objectName);
+    // سایز فایل (بر حسب بایت)
+    const stats = fs.statSync(tempFilePath);
+    const fileSize = stats.size;
 
-    // ساخت FormData برای ارسال به API ASR
+    // ساخت FormData با فایل روی دیسک
     const formData = new FormData();
-    formData.append("file", fileStream, { filename: `${uuidv4()}-${originalFilename}` });
-    
-
-    const ASR_URL = process.env.ASR_URL_OLD;
+    formData.append("file", fs.createReadStream(tempFilePath));
+    formData.append("language", language);
+    formData.append("n_params", n_params);
+    formData.append("mode", mode);
 
     // ارسال فایل به API ASR
-    console.log('asr old started');
+    console.log("asr old started");
+    console.log("asr old url", ASR_URL_OLD);
+
+    const response = await axios.post(`${ASR_URL_OLD}/api/transcribe/file`, formData);
+    console.log('response=>>>>>',response);
     
-    const response = await axios.post(`${ASR_URL}/api/transcribe/file`, formData, {
-      headers: formData.getHeaders(),
-      maxBodyLength: Infinity,
-    });
 
     const { transcription, word } = response.data;
     const totalTime = Date.now() - startTime;
 
-    // حذف رکورد fail قبلی
-    if (failedRecord) await UserFileModel.deleteOne({ _id: failedRecord._id });
-
-    // ذخیره رکورد موفق ASR
+    // ذخیره رکورد موفق
     const newFile = new UserFileModel({
       userId,
-      originalFilename,        // حفظ اسم اصلی فارسی
+      originalFilename,
       minioObjectName: objectName,
       MinIofileId: "",
-      size: 0,
+      size: fileSize, // سایز فایل
       type: "ASR",
       inputIdFile: objectName,
       textAsr: transcription,
@@ -91,19 +107,17 @@ export async function asrControllerOld(req, res) {
     });
 
     await newFile.save();
-    console.info('asr complited');
+    console.info("asr completed");
 
     return res.status(200).json({
       message: "ASR completed and data stored successfully",
       response: response.data,
       mongoRecordedId: newFile._id,
     });
-
   } catch (err) {
     console.error("Error in asrController:", err);
     const totalTime = Date.now() - startTime;
 
-    // ذخیره رکورد fail در صورت عدم وجود
     try {
       const existingFailed = await UserFileModel.findOne({
         userId,
@@ -143,5 +157,15 @@ export async function asrControllerOld(req, res) {
     }
 
     return res.status(500).json({ error: "Internal server error", details: err.message });
+  } finally {
+    // حذف فایل موقت در هر صورت (چه موفق چه خطا)
+    if (tempFilePath && fs.existsSync(tempFilePath)) {
+      try {
+        fs.unlinkSync(tempFilePath);
+        console.log("Temporary file deleted:", tempFilePath);
+      } catch (cleanupErr) {
+        console.error("Error deleting temporary file:", cleanupErr);
+      }
+    }
   }
 }
