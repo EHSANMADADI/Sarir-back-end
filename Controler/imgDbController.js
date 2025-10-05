@@ -2,14 +2,16 @@ import axios from "axios";
 import { minioClient } from "../Min-Io-FileManagnent/Min-io-api/utils/uploadToMinio.js";
 import UserFileModel from "../Models/userFileModel.js";
 import FormData from "form-data";
+import dotenv from "dotenv";
 
+dotenv.config();
 export async function imgDbController(req, res) {
   const startTime = Date.now();
   let userId = null;
   const bucketName = "sarirbucket";
-
+  const image_DB = process.env.img_db;
   try {
-    const { objectName, accessToken,workSpace='test'} = req.body;
+    const { objectName, accessToken } = req.body;
 
     if (!objectName || !accessToken) {
       return res.status(400).json({ error: "objectName و accessToken الزامی هستند." });
@@ -69,10 +71,10 @@ export async function imgDbController(req, res) {
     // --- 6️⃣ ساخت FormData و ارسال به API پردازش ---
     const formData = new FormData();
     formData.append("file", fileStream, { filename: originalFilename });
-   console.log('imgDb started');
-   
+    console.log('imgDb started');
+
     const apiResponse = await axios.post(
-      "http://192.168.4.177:17020/api/image-to-DB",
+      `${image_DB}/api/image-to-DB`,
       formData,
       { headers: formData.getHeaders(), maxContentLength: Infinity, maxBodyLength: Infinity }
     );
@@ -97,7 +99,7 @@ export async function imgDbController(req, res) {
       responseTime: totalTime,
       responseSuper: null,
       responseImgDb: apiResponse.data.lm_studio_result,
-      workSpace:workSpace
+
     });
     await newFile.save();
 
@@ -139,7 +141,7 @@ export async function imgDbController(req, res) {
           status: false,
           responseTime,
           responseSuper: null,
-          workSpace:workSpace
+
         });
       }
     } catch (innerErr) {

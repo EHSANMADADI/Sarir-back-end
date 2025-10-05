@@ -6,7 +6,7 @@ import axios from 'axios';
 export async function UploadOrginalFile(req, res) {
   try {
     const startTime = Date.now();
-    const { accessToken, category = "original", workSpace } = req.body;
+    const { accessToken, category = "original", workSpace='test' } = req.body;
     const file = req.file;
 
     if (!file || !accessToken) {
