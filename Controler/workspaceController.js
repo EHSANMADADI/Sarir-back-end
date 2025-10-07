@@ -49,3 +49,43 @@ export async function workspaceController(req, res) {
         });
     }
 }
+
+
+export async function getUserWorkspaces(req, res) {
+    try {
+        const { accessToken } = req.body;
+
+        if (!accessToken) {
+            return res.status(400).json({ error: 'accessToken الزامی است' });
+        }
+
+        // --- validate user ---
+        const response = await axios.get(
+            'http://localhost:3300/api/UserQuery/GetCurrentUser',
+            { headers: { accept: 'application/json', Authorization: accessToken } }
+        );
+
+        const userId = response.data.returnValue?.id;
+        if (!userId) {
+            return res.status(401).json({ error: 'User not found or invalid access token' });
+        }
+
+        // --- fetch user workspaces ---
+        const workspaces = await workspaceModel.find({ userId }).sort({ createdAt: -1 });
+
+        res.status(200).json({
+            message: "User workspaces fetched successfully",
+            workspaces
+        });
+
+    } catch (error) {
+        if (error?.response?.status === 401) {
+            return res.status(401).json({ error: 'User not found or invalid access token' });
+        }
+
+        res.status(500).json({ 
+            error: 'Internal server error', 
+            details: error.message 
+        });
+    }
+}
