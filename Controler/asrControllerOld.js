@@ -82,10 +82,8 @@ export async function asrControllerOld(req, res) {
 
     // ارسال فایل به API ASR
     console.log("asr old started");
-    console.log("asr old url", ASR_URL_OLD);
 
     const response = await axios.post(`${ASR_URL_OLD}/api/transcribe/file`, formData);
-    console.log('response=>>>>>',response);
     
 
     const { transcription, word } = response.data;

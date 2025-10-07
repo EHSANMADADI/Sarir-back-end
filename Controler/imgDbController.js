@@ -10,8 +10,9 @@ export async function imgDbController(req, res) {
   let userId = null;
   const bucketName = "sarirbucket";
   const image_DB = process.env.img_db;
+  const { objectName, accessToken, workSpace = 'test' } = req.body;
+
   try {
-    const { objectName, accessToken } = req.body;
 
     if (!objectName || !accessToken) {
       return res.status(400).json({ error: "objectName و accessToken الزامی هستند." });
@@ -99,6 +100,8 @@ export async function imgDbController(req, res) {
       responseTime: totalTime,
       responseSuper: null,
       responseImgDb: apiResponse.data.lm_studio_result,
+      workSpace: workSpace
+
 
     });
     await newFile.save();
@@ -141,13 +144,19 @@ export async function imgDbController(req, res) {
           status: false,
           responseTime,
           responseSuper: null,
+          workSpace: workSpace
+
 
         });
       }
     } catch (innerErr) {
       console.error("Error saving failed IMGdb record:", innerErr);
     }
-
+    if (error?.response?.status === 500 && error?.response?.data?.message) {
+      return res.status(500).json({
+        error: error.response.data.message
+      });
+    }
     if (error?.response?.status === 401)
       return res.status(401).json({ error: "User not found or invalid access token" });
 

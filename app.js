@@ -18,7 +18,7 @@ import TranslateRoute from './Routes/TranslateRoute.js';
 import imageDbRoute from './Routes/imageDbRoute.js';
 import kwsRoute from './Routes/kwsRoute.js';
 import graphRoute from './Routes/graphRoute.js';
-
+import workspaceRoute from './Routes/workspaceRoute.js'
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -48,6 +48,7 @@ app.use('/translate', TranslateRoute);
 app.use('/ImageDb', imageDbRoute);
 app.use('/KWS', kwsRoute);
 app.use('/graph', graphRoute);
+app.use('/workspace', workspaceRoute);
 
 // fallback برای SPA اصلی
 app.get('*', (req, res, next) => {
