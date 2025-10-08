@@ -9,9 +9,9 @@ export async function superResolationContoroler(req, res) {
   const startTime = Date.now();
   let userId = null;
   const bucketName = "sarirbucket";
+  const { objectName, accessToken, category = "SuperResolation", workSpace = 'test' } = req.body;
 
   try {
-    const { objectName, accessToken, category = "SuperResolation",workSpace='test'} = req.body;
 
     if (!objectName || !accessToken) {
       return res.status(400).json({ error: "objectName و accessToken الزامی هستند." });
@@ -128,7 +128,7 @@ export async function superResolationContoroler(req, res) {
       },
       status: true,
       responseTime,
-      workSpace:workSpace
+      workSpace: workSpace
     });
     await newFile.save();
 
@@ -171,7 +171,7 @@ export async function superResolationContoroler(req, res) {
           responseSuper: null,
           status: false,
           responseTime,
-          workSpace:workSpace
+          workSpace: workSpace
         }).save();
       }
     }

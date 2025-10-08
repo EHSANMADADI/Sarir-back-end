@@ -7,9 +7,9 @@ import FormData from "form-data";
 export async function asrController(req, res) {
   const startTime = Date.now();
   let userId = null;
+    const { objectName, accessToken,workSpace='test'} = req.body;
 
   try {
-    const { objectName, accessToken,workSpace='test'} = req.body;
     const bucketName = "sarirbucket";
 
     if (!objectName || !accessToken) {

@@ -12,9 +12,9 @@ dotenv.config();
 export async function ocrController(req, res) {
   let userId = null;
   const startTime = Date.now();
+    let { objectName, accessToken, translate, source_lang = "fa", target_lang, workSpace = 'test' } = req.body;
 
   try {
-    let { objectName, accessToken, translate, source_lang = "fa", target_lang, workSpace = 'test' } = req.body;
 
     if (!objectName || !accessToken) {
       return res.status(400).json({ error: "objectName و accessToken الزامی هستند." });
@@ -210,6 +210,8 @@ export async function ocrController(req, res) {
       const jsonBuffer = Buffer.from(JSON.stringify(ocrResponseList));
       const ocrJsonPath = `ocrResults/${uuidv4()}.json`;
       await minioClient.putObject("sarirbucket", ocrJsonPath, jsonBuffer);
+      console.log('pdf',savedPdf);
+      
 
       const newFile = new UserFileModel({
         userId,

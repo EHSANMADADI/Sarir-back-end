@@ -12,9 +12,9 @@ dotenv.config();
 export async function vadController(req, res) {
     const startTime = Date.now();
     let userId = null;
+    const { objectName, accessToken, category = 'VadFile', workSpace = 'test' } = req.body;
 
     try {
-        const { objectName, accessToken, category = 'VadFile',workSpace='test' } = req.body;
         const bucketName = "sarirbucket";
         const ASR_URL = process.env.ASR_URL;
 
@@ -105,7 +105,7 @@ export async function vadController(req, res) {
             textAsr: null,
             status: true,
             responseTime,
-            workSpace:workSpace
+            workSpace: workSpace
         });
         await newFile.save();
 
@@ -142,7 +142,7 @@ export async function vadController(req, res) {
                 textAsr: null,
                 status: false,
                 responseTime,
-                workSpace:workSpace
+                workSpace: workSpace
             });
         }
 

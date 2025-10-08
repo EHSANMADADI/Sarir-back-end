@@ -12,9 +12,7 @@ dotenv.config();
 export async function kwsController(req, res) {
     const startTime = Date.now();
     let userId = null;
-
-    try {
-        const { 
+    const { 
             objectName,
             supportFiles = [],
             supportName,
@@ -23,6 +21,8 @@ export async function kwsController(req, res) {
             category = 'kwsFile',
            workSpace='test'
         } = req.body;
+    try {
+    
 
         const bucketName = "sarirbucket";
         const KWS_URL = process.env.KWS_URL;
